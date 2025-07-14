@@ -100,12 +100,48 @@ class SnowflakeConnectionConfig(BaseModel):
     role: Optional[str] = None
     private_key_path: Optional[str] = None
     private_key_passphrase: Optional[str] = None
+    authenticator: Optional[str] = None
 
     @validator('account', 'user', 'warehouse', 'database', 'schema')
     def validate_required_fields(cls, v):
         if not v or not v.strip():
             raise ValueError("Required Snowflake connection field cannot be empty")
         return v.strip()
+
+
+class SnowflakeSettings(BaseModel):
+    """Snowflake settings for the client and connectors."""
+    account: str
+    user: str
+    password: Optional[str] = None
+    warehouse: str
+    database: str
+    schema: str
+    role: Optional[str] = None
+    private_key_path: Optional[str] = None
+    private_key_passphrase: Optional[str] = None
+    authenticator: Optional[str] = None
+    
+    # Connection settings
+    network_timeout: int = Field(default=60)
+    login_timeout: int = Field(default=60)
+    retry_delay_base: int = Field(default=1)
+    
+    @classmethod
+    def from_connection_config(cls, config: SnowflakeConnectionConfig) -> 'SnowflakeSettings':
+        """Create SnowflakeSettings from SnowflakeConnectionConfig."""
+        return cls(
+            account=config.account,
+            user=config.user,
+            password=config.password,
+            warehouse=config.warehouse,
+            database=config.database,
+            schema=config.schema,
+            role=config.role,
+            private_key_path=config.private_key_path,
+            private_key_passphrase=config.private_key_passphrase,
+            authenticator=config.authenticator
+        )
 
 
 class Settings(BaseModel):
@@ -155,8 +191,9 @@ def load_snowflake_config() -> Optional[SnowflakeConnectionConfig]:
         'database': 'SNOWFLAKE_DATABASE',
         'schema': 'SNOWFLAKE_SCHEMA',
         'role': 'SNOWFLAKE_ROLE',
-        'private_key_path': 'SNOWFLAKE_PRIVATE_KEY_PATH',
-        'private_key_passphrase': 'SNOWFLAKE_PRIVATE_KEY_PASSPHRASE'
+        'private_key_path': 'SNOWFLAKE_PRIVATE_KEY_FILE',  # Updated to match .env
+        'private_key_passphrase': 'SNOWFLAKE_PRIVATE_KEY_PASSPHRASE',
+        'authenticator': 'SNOWFLAKE_AUTHENTICATOR'
     }
     
     for key, env_var in env_mapping.items():
