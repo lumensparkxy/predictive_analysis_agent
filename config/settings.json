@@ -1,0 +1,54 @@
+{
+  "app": {
+    "name": "Snowflake Analytics Agent",
+    "version": "1.0.0",
+    "description": "Predictive analytics system for Snowflake data",
+    "debug": false,
+    "log_level": "INFO"
+  },
+  "data_collection": {
+    "interval_seconds": 3600,
+    "batch_size": 10000,
+    "max_rows_per_query": 100000,
+    "retry_attempts": 3,
+    "retry_delay_seconds": 60,
+    "timeout_seconds": 300
+  },
+  "storage": {
+    "data_retention_days": 30,
+    "cleanup_interval_hours": 24,
+    "max_file_size_mb": 100,
+    "compression_enabled": true
+  },
+  "cache": {
+    "ttl_seconds": 3600,
+    "size_limit_gb": 1,
+    "cleanup_threshold": 0.8
+  },
+  "models": {
+    "training_interval_hours": 24,
+    "validation_split": 0.2,
+    "test_split": 0.1,
+    "random_state": 42,
+    "n_jobs": -1
+  },
+  "alerts": {
+    "enabled": true,
+    "check_interval_minutes": 15,
+    "cost_threshold_percent": 20,
+    "usage_threshold_percent": 80,
+    "error_rate_threshold": 0.1
+  },
+  "api": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "workers": 1,
+    "cors_origins": ["*"],
+    "request_timeout_seconds": 30
+  },
+  "dashboard": {
+    "refresh_interval_seconds": 300,
+    "max_data_points": 1000,
+    "chart_types": ["line", "bar", "scatter", "heatmap"]
+  }
+}

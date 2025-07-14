@@ -1,0 +1,57 @@
+{
+  "connection": {
+    "account": "${SNOWFLAKE_ACCOUNT}",
+    "user": "${SNOWFLAKE_USER}",
+    "password": "${SNOWFLAKE_PASSWORD}",
+    "warehouse": "${SNOWFLAKE_WAREHOUSE}",
+    "database": "${SNOWFLAKE_DATABASE}",
+    "schema": "${SNOWFLAKE_SCHEMA}",
+    "role": "${SNOWFLAKE_ROLE}"
+  },
+  "queries": {
+    "warehouse_usage": {
+      "sql": "SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY WHERE START_TIME >= DATEADD(day, -7, CURRENT_TIMESTAMP())",
+      "description": "Warehouse usage and credit consumption data"
+    },
+    "query_history": {
+      "sql": "SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY WHERE START_TIME >= DATEADD(day, -7, CURRENT_TIMESTAMP()) ORDER BY START_TIME DESC LIMIT 10000",
+      "description": "Query execution history and performance metrics"
+    },
+    "storage_usage": {
+      "sql": "SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.STORAGE_USAGE WHERE USAGE_DATE >= DATEADD(day, -30, CURRENT_DATE())",
+      "description": "Storage usage by database and schema"
+    },
+    "user_activity": {
+      "sql": "SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.LOGIN_HISTORY WHERE EVENT_TIMESTAMP >= DATEADD(day, -7, CURRENT_TIMESTAMP())",
+      "description": "User login and activity patterns"
+    },
+    "pipe_usage": {
+      "sql": "SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.PIPE_USAGE_HISTORY WHERE START_TIME >= DATEADD(day, -7, CURRENT_TIMESTAMP())",
+      "description": "Snowpipe usage and data loading metrics"
+    },
+    "task_history": {
+      "sql": "SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.TASK_HISTORY WHERE SCHEDULED_TIME >= DATEADD(day, -7, CURRENT_TIMESTAMP())",
+      "description": "Task execution history and performance"
+    }
+  },
+  "data_sources": {
+    "account_usage": {
+      "database": "SNOWFLAKE",
+      "schema": "ACCOUNT_USAGE",
+      "description": "Snowflake account usage views"
+    },
+    "information_schema": {
+      "database": "${SNOWFLAKE_DATABASE}",
+      "schema": "INFORMATION_SCHEMA",
+      "description": "Database metadata and schema information"
+    }
+  },
+  "collection_schedule": {
+    "warehouse_usage": "hourly",
+    "query_history": "hourly", 
+    "storage_usage": "daily",
+    "user_activity": "hourly",
+    "pipe_usage": "hourly",
+    "task_history": "hourly"
+  }
+}
