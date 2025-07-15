@@ -83,6 +83,11 @@ class ConnectionPool:
         self._initialize_pool()
         self._start_health_check_thread()
     
+    @property 
+    def _connections(self):
+        """Alias for _all_connections for backward compatibility."""
+        return self._all_connections
+    
     def _initialize_pool(self):
         """Initialize the connection pool with minimum connections."""
         logger.info(f"Initializing connection pool with {self.min_connections} initial connections")
@@ -348,6 +353,25 @@ class ConnectionPool:
         
         logger.info("Connection pool shutdown complete")
 
+
+
+    def start(self):
+        """Start the connection pool and health checking."""
+        if self._health_check_thread is None:
+            self._start_health_check_thread()
+        logger.info("Connection pool started")
+
+
+    def get_pool_status(self) -> Dict[str, Any]:
+        """Get connection pool status."""
+        with self._lock:
+            return {
+                'total_connections': len(self._connections),
+                'active_connections': len([c for c in self._connections if c.is_in_use]),
+                'healthy_connections': len([c for c in self._connections if c.is_healthy]),
+                'max_connections': self.max_connections,
+                'health_check_enabled': self._health_check_thread is not None
+            }
 
 class PoolExhaustedException(Exception):
     """Raised when the connection pool is exhausted and no connections are available."""

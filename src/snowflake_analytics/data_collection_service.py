@@ -18,7 +18,7 @@ from .scheduler.collection_scheduler import CollectionScheduler
 from .scheduler.job_queue import JobQueue
 from .scheduler.retry_handler import RetryHandler
 from .scheduler.status_monitor import StatusMonitor
-from .config.settings import Settings
+from .config.settings import Settings, SnowflakeSettings
 from .utils.logger import get_logger
 from .utils.health_check import HealthChecker
 
@@ -89,23 +89,29 @@ class DataCollectionService:
             logger.info("Initializing Snowflake Data Collection Service...")
             
             # Load configuration
-            self.settings = Settings(config_dir=self.config_path)
+            from .config.settings import get_settings
+            self.settings = get_settings()
             logger.info("Configuration loaded successfully")
             
             # Initialize storage
             storage_config = self.settings.get_storage_config()
             self.storage = SQLiteStore(
-                db_path=storage_config.get('database_path', 'storage.db'),
-                **storage_config.get('options', {})
+                db_path=storage_config.get('database_path', 'storage.db')
             )
             logger.info("Storage initialized")
             
             # Initialize connection pool
             snowflake_config = self.settings.get_snowflake_config()
-            self.connection_pool = ConnectionPool(
-                connection_config=snowflake_config,
-                **self.settings.get_connection_pool_config()
-            )
+            if snowflake_config:
+                snowflake_settings = SnowflakeSettings.from_connection_config(snowflake_config)
+                pool_config = self.settings.get_connection_pool_config()
+                self.connection_pool = ConnectionPool(
+                    settings=snowflake_settings,
+                    max_connections=pool_config.get('max_connections', 5),
+                    connection_timeout=pool_config.get('connection_timeout', 300)
+                )
+            else:
+                raise ValueError("Snowflake configuration not found")
             logger.info("Connection pool initialized")
             
             # Initialize job queue
@@ -137,10 +143,7 @@ class DataCollectionService:
             logger.info("Collection scheduler initialized")
             
             # Initialize health checker
-            self.health_checker = HealthChecker(
-                storage=self.storage,
-                connection_pool=self.connection_pool
-            )
+            self.health_checker = HealthChecker()
             logger.info("Health checker initialized")
             
             # Set up component cross-references

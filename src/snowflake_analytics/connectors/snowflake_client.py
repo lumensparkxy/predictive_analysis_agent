@@ -60,6 +60,10 @@ class SnowflakeClient:
         self._connection_params = self._build_connection_params()
         self._private_key = None
         
+        # Connection status tracking
+        self.is_in_use = False
+        self.is_healthy = True
+        
         # Load private key if using JWT authentication
         if self._is_jwt_auth():
             self._load_private_key()

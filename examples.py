@@ -5,8 +5,31 @@ This module demonstrates how to use the data collection system and provides
 sample code for common operations.
 """
 
+import os
+import sys
 import time
 from datetime import datetime
+from pathlib import Path
+
+# Load environment variables from .env file
+def load_env():
+    env_file = Path('.env')
+    if env_file.exists():
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    value = value.strip('"').strip("'")
+                    os.environ[key] = value
+
+# Load environment before imports
+load_env()
+sys.path.insert(0, 'src')
+
+# Force reload settings after environment is loaded
+from src.snowflake_analytics.config.settings import reload_settings
+reload_settings()  # Clear cache and reload with environment variables
 
 from src.snowflake_analytics import (
     create_service, start_service, stop_service, get_service

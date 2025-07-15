@@ -5,11 +5,28 @@ This module provides centralized configuration loading with validation
 using Pydantic models and support for environment variable overrides.
 """
 
+
+# Load environment variables BEFORE any other imports
+try:
+    from ..env_loader import load_env
+except ImportError:
+    # Fallback env loading
+    import os
+    from pathlib import Path
+    env_file = Path(".env")
+    if env_file.exists():
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    os.environ[key.strip()] = value.strip().strip('"').strip("'")
+
 import json
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from pydantic import BaseModel, Field, validator
 
@@ -101,6 +118,10 @@ class SnowflakeConnectionConfig(BaseModel):
     private_key_path: Optional[str] = None
     private_key_passphrase: Optional[str] = None
     authenticator: Optional[str] = None
+    network_timeout: int = Field(default=60, ge=10)  # Network timeout in seconds
+    login_timeout: int = Field(default=60, ge=10)    # Login timeout in seconds  
+    retry_delay_base: float = Field(default=1.0, ge=0.1)  # Base delay for exponential backoff
+    client_session_keep_alive: bool = Field(default=True)  # Keep session alive
 
     @validator('account', 'user', 'warehouse', 'database', 'schema')
     def validate_required_fields(cls, v):
@@ -155,6 +176,55 @@ class Settings(BaseModel):
     api: APIConfig = Field(default_factory=APIConfig)
     dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
     snowflake: Optional[SnowflakeConnectionConfig] = None
+
+    def get_storage_config(self) -> Dict[str, Any]:
+        """Get storage configuration as dictionary."""
+        return {
+            'database_path': 'storage.db',
+            'options': {
+                'data_retention_days': self.storage.data_retention_days,
+                'cleanup_interval_hours': self.storage.cleanup_interval_hours,
+                'max_file_size_mb': self.storage.max_file_size_mb,
+                'compression_enabled': self.storage.compression_enabled
+            }
+        }
+
+    def get_snowflake_config(self) -> Optional[SnowflakeConnectionConfig]:
+        """Get Snowflake connection configuration."""
+        return self.snowflake
+
+    def get_connection_pool_config(self) -> Dict[str, Any]:
+        """Get connection pool configuration."""
+        return {
+            'max_connections': 5,
+            'connection_timeout': 300,
+            'retry_attempts': 3,
+            'retry_delay': 60
+        }
+
+    def get_scheduler_config(self) -> Dict[str, Any]:
+        """Get scheduler configuration."""
+        return {
+            'collection_interval': self.data_collection.interval_seconds,
+            'batch_size': self.data_collection.batch_size,
+            'max_rows_per_query': self.data_collection.max_rows_per_query,
+            'retry_attempts': self.data_collection.retry_attempts,
+            'retry_delay_seconds': self.data_collection.retry_delay_seconds,
+            'timeout_seconds': self.data_collection.timeout_seconds,
+            'job_queue': {
+                'max_workers': 3,
+                'max_queue_size': 100,
+                'default_timeout': self.data_collection.timeout_seconds
+            },
+            'retry_handler': {
+                'max_retries': self.data_collection.retry_attempts,
+                'backoff_factor': 2.0
+            },
+            'status_monitor': {
+                'check_interval': 60,
+                'alert_threshold': 5
+            }
+        }
 
 
 def load_json_config(file_path: Path) -> Dict:
@@ -245,6 +315,12 @@ def get_settings() -> Settings:
     settings.snowflake = load_snowflake_config()
     
     return settings
+
+
+def reload_settings() -> Settings:
+    """Force reload of settings (clears cache)."""
+    get_settings.cache_clear()
+    return get_settings()
 
 
 def validate_configuration() -> Dict[str, bool]:

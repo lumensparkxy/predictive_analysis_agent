@@ -355,6 +355,29 @@ class HealthChecker:
         from datetime import datetime
         return datetime.utcnow().isoformat()
 
+    def run_all_checks(self) -> Dict[str, Any]:
+        """Run all health checks and return comprehensive status."""
+        results = {
+            'overall_status': 'healthy',
+            'checks': {},
+            'timestamp': self._get_timestamp(),
+            'errors': []
+        }
+        
+        try:
+            # Run the comprehensive check_all method
+            check_results = self.check_all()
+            
+            # Transform the results for compatibility
+            results['checks'] = check_results
+            results['overall_status'] = 'healthy' if check_results.get('overall', {}).get('healthy', False) else 'issues'
+            
+            return results
+        except Exception as e:
+            results['overall_status'] = 'error'
+            results['errors'].append(str(e))
+            return results
+
 
 def quick_health_check() -> bool:
     """Perform a quick health check and return overall status."""

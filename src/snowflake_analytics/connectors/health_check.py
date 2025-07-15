@@ -486,6 +486,33 @@ class ConnectionHealthChecker:
         
         return diagnostics
     
+    def run_all_checks(self):
+        """Run all health checks and return results."""
+        try:
+            # Perform basic health check
+            health_result = self.check_health()
+            
+            # Get metrics
+            metrics = self.get_health_metrics()
+            
+            # Run diagnostics
+            diagnostics = self.run_diagnostics()
+            
+            return {
+                'health_result': health_result,
+                'metrics': metrics,
+                'diagnostics': diagnostics,
+                'timestamp': datetime.utcnow().isoformat(),
+                'overall_healthy': health_result.is_healthy if health_result else False
+            }
+        except Exception as e:
+            logger.error(f"Error running all checks: {e}")
+            return {
+                'error': str(e),
+                'timestamp': datetime.utcnow().isoformat(),
+                'overall_healthy': False
+            }
+    
     def cleanup(self):
         """Clean up resources."""
         self.stop_monitoring()

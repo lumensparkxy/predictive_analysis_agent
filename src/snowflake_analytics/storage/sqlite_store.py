@@ -356,6 +356,44 @@ class SQLiteStore:
         """Alias for get_database_stats for API compatibility."""
         return self.get_database_stats()
 
+    def execute(self, query: str, parameters: tuple = None) -> List[Dict]:
+        """Execute a SQL query and return results."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                if parameters:
+                    cursor.execute(query, parameters)
+                else:
+                    cursor.execute(query)
+                
+                # If it's a SELECT query, return results
+                if query.strip().upper().startswith('SELECT'):
+                    columns = [description[0] for description in cursor.description]
+                    rows = cursor.fetchall()
+                    return [dict(zip(columns, row)) for row in rows]
+                else:
+                    conn.commit()
+                    return []
+        except Exception as e:
+            logger.error(f"Database execute error: {e}")
+            raise
+
+    def connect(self):
+        """Return a database connection (for compatibility)."""
+        return self.get_connection()
+
+
+
+
+    def commit(self):
+        """Commit current transaction (for compatibility)."""
+        # SQLiteStore auto-commits, so this is a no-op for compatibility
+        pass
+
+    def close(self):
+        """Close database connections (for compatibility)."""
+        # SQLiteStore uses context managers, so this is a no-op for compatibility
+        pass
 
 if __name__ == "__main__":
     # Test the SQLite store
