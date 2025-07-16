@@ -119,7 +119,14 @@ class ProphetCostModel(BaseTimeSeriesModel):
             raise PredictionError("Model must be trained before making predictions")
         
         try:
-            future_dates = X
+            # Handle different input types
+            if isinstance(X, int):
+                # Generate future dates for the specified number of periods
+                periods = X
+                start_date = self._last_training_date + timedelta(days=1) if self._last_training_date else datetime.now()
+                future_dates = [start_date + timedelta(days=i) for i in range(periods)]
+            else:
+                future_dates = X
             
             # Simulate Prophet predictions
             predictions = []
