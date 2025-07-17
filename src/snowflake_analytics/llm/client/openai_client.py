@@ -232,21 +232,11 @@ class OpenAIClient:
         }
 
 
-# Backwards compatibility
-try:
-    import asyncio
-except ImportError:
+import asyncio
     # Fallback for sync usage
-    class OpenAIClient(OpenAIClient):
-        def generate_completion(self, *args, **kwargs):
-            """Synchronous wrapper for generate_completion."""
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                return loop.run_until_complete(self.async_generate_completion(*args, **kwargs))
-            finally:
-                loop.close()
-        
-        async def async_generate_completion(self, *args, **kwargs):
-            """Async version - same as parent method."""
-            return await super().generate_completion(*args, **kwargs)
+# Backwards compatibility for sync usage
+try:
+    # Sync wrapper implementation would go here if needed
+    pass
+except Exception:
+    pass

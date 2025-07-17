@@ -63,6 +63,22 @@ except ImportError as e:
     AnomalyDetector = None
     DataLineageTracker = None
 
+try:
+    from .llm import (
+        LLMService, get_llm_service, create_llm_service, reset_llm_service,
+        OpenAIClient, AzureOpenAIClient, QueryInterface, InsightGenerator
+    )
+except ImportError as e:
+    print(f"Warning: LLM components import failed: {e}")
+    LLMService = None
+    get_llm_service = None
+    create_llm_service = None
+    reset_llm_service = None
+    OpenAIClient = None
+    AzureOpenAIClient = None
+    QueryInterface = None
+    InsightGenerator = None
+
 # Core modules (always available)
 from .config.settings import get_settings, Settings
 from .storage.sqlite_store import SQLiteStore
@@ -146,4 +162,14 @@ __all__ = [
     "DataQualityChecker",
     "AnomalyDetector",
     "DataLineageTracker",
+    
+    # LLM components (if available)
+    "LLMService",
+    "get_llm_service",
+    "create_llm_service", 
+    "reset_llm_service",
+    "OpenAIClient",
+    "AzureOpenAIClient",
+    "QueryInterface",
+    "InsightGenerator",
 ]
