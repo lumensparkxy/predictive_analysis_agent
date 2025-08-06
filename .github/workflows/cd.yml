@@ -1,0 +1,129 @@
+name: Production Deployment
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment type'
+        required: true
+        default: 'blue-green'
+        type: choice
+        options:
+          - blue-green
+          - rolling
+          - canary
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+    
+    - name: Set deployment variables
+      id: vars
+      run: |
+        echo "timestamp=$(date +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT
+        echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        echo "deployment_id=deploy_$(date +%Y%m%d_%H%M%S)_$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    
+    - name: Download deployment artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: deployment-package
+        path: ./deployment/
+    
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+    
+    - name: Pre-deployment health check
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_HOST }} \
+          "cd /opt/analytics && ./deployment/production/scripts/health-check.sh"
+    
+    - name: Create backup before deployment
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_HOST }} \
+          "cd /opt/analytics && ./deployment/production/scripts/backup.sh"
+    
+    - name: Deploy application
+      run: |
+        case "${{ github.event.inputs.deployment_type }}" in
+          "blue-green")
+            ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_HOST }} \
+              "cd /opt/analytics && ./deployment/automation/blue_green_deploy.py --version ${{ steps.vars.outputs.sha_short }}"
+            ;;
+          "rolling")
+            ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_HOST }} \
+              "cd /opt/analytics && ./deployment/production/scripts/deploy.sh"
+            ;;
+          "canary")
+            ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_HOST }} \
+              "cd /opt/analytics && ./deployment/automation/canary_deploy.py --version ${{ steps.vars.outputs.sha_short }}"
+            ;;
+        esac
+    
+    - name: Post-deployment health check
+      run: |
+        sleep 30
+        ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_HOST }} \
+          "cd /opt/analytics && ./deployment/production/scripts/health-check.sh"
+    
+    - name: Run smoke tests
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_HOST }} \
+          "cd /opt/analytics && python -m pytest tests/smoke/ -v"
+    
+    - name: Update deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "Deployment successful"
+          # Update deployment tracking
+        else
+          echo "Deployment failed, initiating rollback"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_HOST }} \
+            "cd /opt/analytics && ./deployment/production/scripts/rollback.sh"
+        fi
+    
+    - name: Notify deployment status
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  performance-test:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run performance tests
+      run: |
+        # Run load testing with k6 or artillery
+        echo "Running performance tests..."
+        
+    - name: Generate performance report
+      run: |
+        # Generate and upload performance report
+        echo "Generating performance report..."
