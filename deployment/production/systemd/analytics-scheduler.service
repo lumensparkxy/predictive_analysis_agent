@@ -1,0 +1,57 @@
+# Snowflake Analytics Scheduler Service
+# SystemD service configuration for scheduled tasks and data collection
+
+[Unit]
+Description=Snowflake Analytics Scheduler Service
+Documentation=https://github.com/lumensparkxy/predictive_analysis_agent
+After=network.target postgresql.service redis.service analytics-api.service
+Wants=network.target
+Requires=postgresql.service redis.service
+
+[Service]
+Type=exec
+User=analytics
+Group=analytics
+WorkingDirectory=/opt/analytics
+Environment=PATH=/opt/analytics/venv/bin
+Environment=PYTHONPATH=/opt/analytics/src
+EnvironmentFile=/opt/analytics/config/production.env
+
+# Main command
+ExecStart=/opt/analytics/venv/bin/celery beat \
+    --app=src.snowflake_analytics.worker.celery_app:app \
+    --loglevel=info \
+    --schedule=/opt/analytics/data/celerybeat-schedule \
+    --pidfile=/var/run/analytics/scheduler.pid \
+    --logfile=/opt/analytics/logs/scheduler.log
+
+ExecReload=/bin/kill -s HUP $MAINPID
+
+# Process management
+KillMode=process
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/analytics/logs /opt/analytics/data /var/run/analytics /tmp
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
+LockPersonality=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=analytics-scheduler
+
+[Install]
+WantedBy=multi-user.target

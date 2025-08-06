@@ -1,0 +1,157 @@
+# Snowflake Analytics - Production Configuration
+# YAML configuration for production deployment
+
+application:
+  name: "snowflake-analytics"
+  version: "1.0.0"
+  environment: "production"
+  debug: false
+  
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  timeout: 300
+  keepalive: 65
+  max_requests: 1000
+  max_requests_jitter: 100
+
+database:
+  snowflake:
+    account: "${SNOWFLAKE_ACCOUNT}"
+    user: "${SNOWFLAKE_USER}"
+    warehouse: "${SNOWFLAKE_WAREHOUSE}"
+    database: "${SNOWFLAKE_DATABASE}"
+    schema: "${SNOWFLAKE_SCHEMA}"
+    role: "${SNOWFLAKE_ROLE}"
+    connection_pool_size: 20
+    max_overflow: 10
+    pool_timeout: 30
+    pool_recycle: 3600
+    
+  postgresql:
+    url: "${DATABASE_URL}"
+    pool_size: 20
+    max_overflow: 30
+    pool_timeout: 30
+    pool_recycle: 3600
+    
+  redis:
+    url: "${REDIS_URL}"
+    connection_pool_size: 20
+    socket_timeout: 5
+    socket_connect_timeout: 5
+
+security:
+  secret_key: "${SECRET_KEY}"
+  jwt_secret: "${JWT_SECRET_KEY}"
+  encryption_key: "${ENCRYPTION_KEY}"
+  api_key_expiry_hours: 24
+  password_hash_rounds: 12
+  session_timeout: 3600
+  max_login_attempts: 5
+  lockout_duration: 900
+  
+  ssl:
+    enabled: true
+    cert_path: "/etc/nginx/ssl/certificates/analytics.crt"
+    key_path: "/etc/nginx/ssl/certificates/analytics.key"
+    protocols: ["TLSv1.2", "TLSv1.3"]
+
+monitoring:
+  enabled: true
+  metrics_port: 9090
+  health_check_interval: 30
+  prometheus_multiproc_dir: "/tmp/prometheus_multiproc"
+  
+  logging:
+    level: "INFO"
+    file: "/opt/analytics/logs/application.log"
+    rotation: "daily"
+    retention_days: 30
+    structured: true
+    format: "json"
+    
+  alerts:
+    email:
+      enabled: true
+      smtp_server: "smtp.gmail.com"
+      smtp_port: 587
+      from_address: "alerts@yourcompany.com"
+      to_addresses: ["admin@yourcompany.com", "team@yourcompany.com"]
+      
+    slack:
+      enabled: true
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      channel: "#analytics-alerts"
+      
+    pagerduty:
+      enabled: false
+      integration_key: "${PAGERDUTY_INTEGRATION_KEY}"
+
+data_collection:
+  interval: 300  # 5 minutes
+  batch_size: 50000
+  max_rows_per_query: 1000000
+  retention_days: 365
+  timeout: 600
+  max_concurrent_queries: 10
+  
+  collectors:
+    usage_metrics:
+      enabled: true
+      schedule: "*/5 * * * *"  # Every 5 minutes
+      
+    query_metrics:
+      enabled: true
+      schedule: "*/10 * * * *"  # Every 10 minutes
+      
+    warehouse_metrics:
+      enabled: true
+      schedule: "*/15 * * * *"  # Every 15 minutes
+      
+    cost_metrics:
+      enabled: true
+      schedule: "0 * * * *"  # Every hour
+
+features:
+  anomaly_detection:
+    enabled: true
+    sensitivity: "medium"
+    lookback_days: 30
+    
+  cost_prediction:
+    enabled: true
+    forecast_days: 30
+    models: ["arima", "prophet", "lstm"]
+    
+  usage_prediction:
+    enabled: true
+    forecast_days: 7
+    
+  recommendations:
+    enabled: true
+    llm_provider: "openai"
+    model: "gpt-4"
+
+performance:
+  cache:
+    ttl: 3600
+    size_limit: "1GB"
+    
+  rate_limiting:
+    enabled: true
+    per_minute: 1000
+    burst: 2000
+    
+  cors:
+    enabled: false
+    origins: []
+    
+backup:
+  enabled: true
+  interval: "daily"
+  retention_days: 90
+  location: "/opt/analytics/backups"
+  encryption_enabled: true
+  compression_enabled: true

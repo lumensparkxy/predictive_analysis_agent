@@ -1,0 +1,228 @@
+# Snowflake Analytics Security Policy
+# Enterprise security policy configuration
+
+security_policy:
+  version: "1.0"
+  effective_date: "2024-01-01"
+  review_date: "2024-12-31"
+  
+authentication:
+  password_policy:
+    min_length: 12
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_symbols: true
+    max_age_days: 90
+    history_count: 5
+    
+  session_management:
+    timeout_minutes: 60
+    max_concurrent_sessions: 5
+    require_secure_cookies: true
+    
+  multi_factor_authentication:
+    enabled: true
+    required_for_admin: true
+    backup_codes: 10
+    
+encryption:
+  data_at_rest:
+    algorithm: "AES-256-GCM"
+    key_rotation_days: 365
+    backup_encryption: true
+    
+  data_in_transit:
+    tls_version: "1.3"
+    cipher_suites:
+      - "TLS_AES_256_GCM_SHA384"
+      - "TLS_CHACHA20_POLY1305_SHA256"
+      - "TLS_AES_128_GCM_SHA256"
+    certificate_validation: true
+    
+  key_management:
+    provider: "internal"
+    key_escrow: false
+    key_backup: true
+    
+access_control:
+  principle: "least_privilege"
+  role_based_access: true
+  attribute_based_access: false
+  
+  roles:
+    viewer:
+      permissions:
+        - "read_data"
+        - "view_analytics"
+        - "view_metrics"
+        - "view_health"
+        - "api_access"
+      restrictions:
+        - "no_data_export"
+        
+    analyst:
+      permissions:
+        - "read_data"
+        - "write_data"
+        - "view_analytics"
+        - "create_analytics"
+        - "modify_analytics"
+        - "view_metrics"
+        - "view_logs"
+        - "api_access"
+      restrictions:
+        - "no_system_config"
+        
+    admin:
+      permissions:
+        - "read_data"
+        - "write_data"
+        - "delete_data"
+        - "view_analytics"
+        - "create_analytics"
+        - "modify_analytics"
+        - "user_management"
+        - "system_config"
+        - "view_metrics"
+        - "view_logs"
+        - "api_access"
+        - "api_write"
+        - "api_admin"
+      restrictions: []
+      
+  account_management:
+    lockout_threshold: 5
+    lockout_duration_minutes: 15
+    password_reset_expiry_hours: 24
+    
+audit_logging:
+  enabled: true
+  log_level: "INFO"
+  retention_days: 2555  # 7 years
+  integrity_protection: true
+  
+  events_to_log:
+    - "authentication"
+    - "authorization"
+    - "data_access"
+    - "configuration_changes"
+    - "user_management"
+    - "system_events"
+    - "api_requests"
+    
+  log_destinations:
+    - "file"
+    - "syslog"
+    
+monitoring:
+  security_monitoring:
+    enabled: true
+    real_time_alerts: true
+    anomaly_detection: true
+    
+  alerts:
+    failed_login_threshold: 3
+    privilege_escalation: true
+    data_exfiltration: true
+    configuration_changes: true
+    
+vulnerability_management:
+  scanning:
+    frequency: "weekly"
+    automated: true
+    include_dependencies: true
+    
+  patching:
+    critical_sla_hours: 24
+    high_sla_hours: 72
+    medium_sla_days: 30
+    
+incident_response:
+  team_contact: "security@company.com"
+  escalation_matrix:
+    - level: 1
+      contact: "oncall@company.com"
+      response_time_minutes: 15
+    - level: 2
+      contact: "security-team@company.com" 
+      response_time_minutes: 30
+    - level: 3
+      contact: "ciso@company.com"
+      response_time_minutes: 60
+      
+data_protection:
+  classification_levels:
+    - "public"
+    - "internal"
+    - "confidential" 
+    - "restricted"
+    - "pii"
+    - "phi"
+    
+  handling_requirements:
+    pii:
+      encryption_required: true
+      access_logging: true
+      retention_days: 365
+      geographic_restrictions: true
+      
+    phi:
+      encryption_required: true
+      access_logging: true
+      retention_days: 2555
+      geographic_restrictions: true
+      additional_controls: "hipaa_compliance"
+      
+    confidential:
+      encryption_required: true
+      access_logging: true
+      need_to_know: true
+      
+backup_security:
+  encryption: true
+  geographic_separation: true
+  testing_frequency: "quarterly"
+  retention_policy: "3-2-1"
+  
+physical_security:
+  data_center_security: "third_party_managed"
+  environmental_controls: true
+  access_controls: true
+  
+network_security:
+  firewall: true
+  intrusion_detection: true
+  ddos_protection: true
+  network_segmentation: true
+  
+  allowed_ports:
+    - 22   # SSH
+    - 80   # HTTP (redirect to HTTPS)
+    - 443  # HTTPS
+    - 5432 # PostgreSQL (internal)
+    - 6379 # Redis (internal)
+    
+third_party_security:
+  vendor_assessment: true
+  security_requirements: true
+  monitoring: true
+  
+training:
+  security_awareness: true
+  frequency: "annual"
+  phishing_simulation: "quarterly"
+  
+compliance:
+  frameworks:
+    - "SOC2"
+    - "ISO27001" 
+    - "GDPR"
+    - "CCPA"
+  assessments: "annual"
+  
+policy_management:
+  review_frequency: "annual"
+  approval_required: true
+  version_control: true
+  distribution: "mandatory"

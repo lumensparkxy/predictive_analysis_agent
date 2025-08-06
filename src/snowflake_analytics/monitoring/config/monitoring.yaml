@@ -1,0 +1,255 @@
+# Monitoring Configuration for Snowflake Analytics
+# Comprehensive monitoring system configuration
+
+monitoring:
+  enabled: true
+  collection_interval_seconds: 30
+  retention_hours: 168  # 7 days
+  
+  # Health checks configuration
+  health_checks:
+    enabled: true
+    interval_seconds: 30
+    timeout_seconds: 10
+    
+    checks:
+      api_health:
+        enabled: true
+        url: "http://localhost:8000/health"
+        expected_status: 200
+        expected_content: "healthy"
+        
+      database_connection:
+        enabled: true
+        type: "postgresql"
+        timeout_seconds: 5
+        
+      redis_connection:
+        enabled: true
+        host: "localhost"
+        port: 6379
+        timeout_seconds: 5
+        
+      snowflake_connection:
+        enabled: true
+        timeout_seconds: 30
+        
+      system_resources:
+        enabled: true
+        cpu_threshold_warning: 80
+        cpu_threshold_critical: 90
+        memory_threshold_warning: 80
+        memory_threshold_critical: 90
+        disk_threshold_warning: 80
+        disk_threshold_critical: 95
+        
+  # Metrics collection
+  metrics:
+    enabled: true
+    collection_interval_seconds: 10
+    storage_backend: "redis"  # redis, memory, file
+    prometheus_enabled: true
+    prometheus_port: 9090
+    
+    system_metrics:
+      enabled: true
+      collect_cpu: true
+      collect_memory: true
+      collect_disk: true
+      collect_network: true
+      collect_processes: true
+      
+    application_metrics:
+      enabled: true
+      collect_requests: true
+      collect_database: true
+      collect_cache: true
+      collect_queues: true
+      collect_sessions: true
+      
+    business_metrics:
+      enabled: true
+      collect_user_activity: true
+      collect_data_processing: true
+      collect_analytics: true
+      
+  # Alerting configuration
+  alerting:
+    enabled: true
+    evaluation_interval_seconds: 60
+    
+    notification_channels:
+      email:
+        enabled: false  # Set to true and configure SMTP
+        smtp_server: "smtp.gmail.com"
+        smtp_port: 587
+        from_address: "alerts@yourcompany.com"
+        to_addresses:
+          - "admin@yourcompany.com"
+          - "ops@yourcompany.com"
+        
+      slack:
+        enabled: false  # Set to true and configure webhook
+        webhook_url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+        channel: "#analytics-alerts"
+        username: "Analytics Monitor"
+        
+      webhook:
+        enabled: false
+        urls:
+          - "https://your-webhook-endpoint.com/alerts"
+    
+    # Alert rules
+    rules:
+      high_cpu_usage:
+        condition: "system.cpu.usage_percent > 90"
+        severity: "warning"
+        cooldown_minutes: 15
+        message: "High CPU usage detected: {{value}}%"
+        
+      high_memory_usage:
+        condition: "system.memory.usage_percent > 90" 
+        severity: "warning"
+        cooldown_minutes: 15
+        message: "High memory usage detected: {{value}}%"
+        
+      disk_space_critical:
+        condition: "system.disk.usage_percent > 95"
+        severity: "critical"
+        cooldown_minutes: 5
+        message: "Disk space critically low: {{value}}%"
+        
+      api_health_failed:
+        condition: "health.api_health == false"
+        severity: "critical"
+        cooldown_minutes: 5
+        message: "API health check failed"
+        
+      database_connection_failed:
+        condition: "health.database_connection == false"
+        severity: "critical"
+        cooldown_minutes: 5
+        message: "Database connection failed"
+        
+      data_collection_stale:
+        condition: "data.collection.hours_since_last > 6"
+        severity: "warning"
+        cooldown_minutes: 30
+        message: "Data collection is stale: {{value}} hours"
+        
+  # Logging configuration
+  logging:
+    enabled: true
+    level: "INFO"
+    aggregation_enabled: true
+    
+    sources:
+      application:
+        path: "/opt/analytics/logs/application.log"
+        format: "json"
+        retention_days: 30
+        
+      nginx:
+        path: "/var/log/nginx/analytics_access.log"
+        format: "nginx"
+        retention_days: 30
+        
+      system:
+        path: "/var/log/syslog"
+        format: "syslog"
+        retention_days: 30
+        
+    parsing:
+      error_patterns:
+        - "ERROR"
+        - "CRITICAL"
+        - "FATAL"
+        - "Exception"
+        - "Traceback"
+        
+      warning_patterns:
+        - "WARNING"
+        - "WARN"
+        - "deprecated"
+        
+    alerts:
+      error_threshold_per_minute: 10
+      error_threshold_per_hour: 100
+      
+  # Uptime monitoring
+  uptime:
+    enabled: true
+    check_interval_seconds: 60
+    
+    services:
+      api:
+        url: "http://localhost:8000/health"
+        expected_status: 200
+        timeout_seconds: 10
+        
+      dashboard:
+        url: "http://localhost:8501"
+        expected_status: 200
+        timeout_seconds: 10
+        
+      nginx:
+        url: "http://localhost:80/health"
+        expected_status: 200
+        timeout_seconds: 10
+        
+    sla:
+      target_uptime_percentage: 99.9
+      measurement_window_days: 30
+      
+  # Dashboard export
+  dashboard_export:
+    enabled: true
+    export_interval_seconds: 60
+    
+    formats:
+      - "json"
+      - "prometheus"
+      
+    endpoints:
+      health_summary: "/monitoring/health"
+      metrics_summary: "/monitoring/metrics"  
+      alerts_summary: "/monitoring/alerts"
+      uptime_summary: "/monitoring/uptime"
+      
+  # Data retention
+  retention:
+    health_checks_days: 30
+    metrics_days: 7
+    alerts_days: 90
+    logs_days: 30
+    uptime_days: 90
+    
+  # Performance settings
+  performance:
+    max_concurrent_checks: 10
+    check_timeout_seconds: 30
+    metrics_batch_size: 100
+    cache_ttl_seconds: 300
+    
+  # Security settings
+  security:
+    enable_authentication: false  # Set to true in production
+    api_key_required: false
+    allowed_ips: []  # Empty means allow all
+    
+  # Integration settings
+  integrations:
+    grafana:
+      enabled: false
+      datasource_url: "http://localhost:9090"
+      dashboard_path: "/etc/grafana/dashboards/"
+      
+    elasticsearch:
+      enabled: false
+      url: "http://localhost:9200"
+      index_prefix: "analytics-logs"
+      
+    prometheus:
+      enabled: true
+      scrape_interval: "15s"
+      scrape_timeout: "10s"

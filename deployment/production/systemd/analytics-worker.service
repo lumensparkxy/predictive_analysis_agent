@@ -1,0 +1,60 @@
+# Snowflake Analytics Worker Service
+# SystemD service configuration for background worker processes
+
+[Unit]
+Description=Snowflake Analytics Background Worker
+Documentation=https://github.com/lumensparkxy/predictive_analysis_agent
+After=network.target postgresql.service redis.service analytics-api.service
+Wants=network.target
+Requires=postgresql.service redis.service
+
+[Service]
+Type=exec
+User=analytics
+Group=analytics
+WorkingDirectory=/opt/analytics
+Environment=PATH=/opt/analytics/venv/bin
+Environment=PYTHONPATH=/opt/analytics/src
+EnvironmentFile=/opt/analytics/config/production.env
+
+# Main command
+ExecStart=/opt/analytics/venv/bin/celery worker \
+    --app=src.snowflake_analytics.worker.celery_app:app \
+    --loglevel=info \
+    --concurrency=4 \
+    --max-tasks-per-child=1000 \
+    --time-limit=300 \
+    --soft-time-limit=240 \
+    --pidfile=/var/run/analytics/worker.pid \
+    --logfile=/opt/analytics/logs/worker.log
+
+ExecReload=/bin/kill -s HUP $MAINPID
+
+# Process management
+KillMode=process
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/analytics/logs /opt/analytics/data /var/run/analytics /tmp
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
+LockPersonality=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=analytics-worker
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,232 @@
+# Alert Definitions for Snowflake Analytics
+# Comprehensive alerting rules and thresholds
+
+alerts:
+  version: "1.0"
+  global_settings:
+    evaluation_interval: "1m"
+    default_cooldown: "15m"
+    
+  # System alerts
+  system:
+    high_cpu_usage:
+      condition: "avg_over_time(system_cpu_usage_percent[5m]) > 85"
+      severity: "warning"
+      cooldown: "15m"
+      message: "High CPU usage: {{ $value }}%"
+      description: "System CPU usage has been above 85% for 5 minutes"
+      
+    critical_cpu_usage:
+      condition: "avg_over_time(system_cpu_usage_percent[2m]) > 95"
+      severity: "critical"
+      cooldown: "5m"
+      message: "Critical CPU usage: {{ $value }}%"
+      description: "System CPU usage has been above 95% for 2 minutes"
+      
+    high_memory_usage:
+      condition: "system_memory_usage_percent > 85"
+      severity: "warning"
+      cooldown: "15m"
+      message: "High memory usage: {{ $value }}%"
+      description: "System memory usage is above 85%"
+      
+    critical_memory_usage:
+      condition: "system_memory_usage_percent > 95"
+      severity: "critical"
+      cooldown: "5m"
+      message: "Critical memory usage: {{ $value }}%"
+      description: "System memory usage is above 95%"
+      
+    disk_space_warning:
+      condition: "system_disk_usage_percent > 80"
+      severity: "warning"
+      cooldown: "1h"
+      message: "Disk space low: {{ $value }}%"
+      description: "Disk space usage is above 80%"
+      
+    disk_space_critical:
+      condition: "system_disk_usage_percent > 95"
+      severity: "critical"
+      cooldown: "15m"
+      message: "Disk space critically low: {{ $value }}%"
+      description: "Disk space usage is above 95%"
+      
+    high_load_average:
+      condition: "system_load_average{period='5min'} > 4"
+      severity: "warning"
+      cooldown: "10m"
+      message: "High system load: {{ $value }}"
+      description: "5-minute load average is above 4"
+      
+  # Application alerts
+  application:
+    api_health_failed:
+      condition: "app_health_check{check='api_health'} == 0"
+      severity: "critical"
+      cooldown: "5m"
+      message: "API health check failed"
+      description: "Main API health endpoint is not responding"
+      
+    database_connection_failed:
+      condition: "app_health_check{check='database_connection'} == 0"
+      severity: "critical"
+      cooldown: "5m"
+      message: "Database connection failed"
+      description: "Cannot connect to database"
+      
+    high_response_time:
+      condition: "avg_over_time(app_request_duration_seconds[10m]) > 2"
+      severity: "warning"
+      cooldown: "15m"
+      message: "High API response time: {{ $value }}s"
+      description: "Average API response time is above 2 seconds"
+      
+    high_error_rate:
+      condition: "rate(app_requests_total{status='5xx'}[5m]) > 0.05"
+      severity: "critical"
+      cooldown: "10m"
+      message: "High error rate: {{ $value }}"
+      description: "5xx error rate is above 5%"
+      
+    no_active_sessions:
+      condition: "app_active_sessions < 1"
+      severity: "warning"
+      cooldown: "30m"
+      message: "No active user sessions"
+      description: "No users are currently active"
+      
+    database_connection_pool_exhausted:
+      condition: "app_database_connections > 18"
+      severity: "warning"
+      cooldown: "10m"
+      message: "Database connection pool near limit"
+      description: "Database connection pool is near exhaustion"
+      
+  # Business alerts
+  business:
+    data_collection_stale:
+      condition: "time() - data_collection_last_run > 7200"  # 2 hours
+      severity: "warning"
+      cooldown: "1h"
+      message: "Data collection is stale"
+      description: "No data collection has run in the last 2 hours"
+      
+    data_collection_failed:
+      condition: "increase(data_collection_failures[1h]) > 3"
+      severity: "critical"
+      cooldown: "30m"
+      message: "Multiple data collection failures"
+      description: "More than 3 data collection failures in the last hour"
+      
+    low_data_quality:
+      condition: "analytics_data_quality_score < 80"
+      severity: "warning"
+      cooldown: "2h"
+      message: "Low data quality score: {{ $value }}"
+      description: "Data quality score has dropped below 80"
+      
+    prediction_accuracy_low:
+      condition: "avg_over_time(analytics_prediction_accuracy[24h]) < 0.7"
+      severity: "warning"
+      cooldown: "4h"
+      message: "Low prediction accuracy: {{ $value }}"
+      description: "Model prediction accuracy is below 70%"
+      
+    unusual_query_volume:
+      condition: "rate(business_queries_executed_total[1h]) > 1000"
+      severity: "warning"
+      cooldown: "30m"
+      message: "Unusual query volume: {{ $value }} queries/hour"
+      description: "Query volume is unusually high"
+      
+  # Security alerts
+  security:
+    multiple_failed_logins:
+      condition: "increase(auth_failed_attempts_total[10m]) > 10"
+      severity: "warning"
+      cooldown: "10m"
+      message: "Multiple failed login attempts: {{ $value }}"
+      description: "More than 10 failed login attempts in 10 minutes"
+      
+    suspicious_api_usage:
+      condition: "rate(app_requests_total[5m]) > 100"
+      severity: "warning"
+      cooldown: "15m"
+      message: "Suspicious API usage: {{ $value }} requests/second"
+      description: "Unusually high API request rate"
+      
+    unauthorized_access_attempt:
+      condition: "increase(app_requests_total{status='401'}[10m]) > 20"
+      severity: "warning"
+      cooldown: "10m"
+      message: "Multiple unauthorized access attempts"
+      description: "More than 20 401 responses in 10 minutes"
+      
+  # Infrastructure alerts
+  infrastructure:
+    service_down:
+      condition: "up == 0"
+      severity: "critical"
+      cooldown: "5m"
+      message: "Service is down: {{ $labels.job }}"
+      description: "A monitored service is not responding"
+      
+    ssl_certificate_expiring:
+      condition: "ssl_certificate_expiry_days < 30"
+      severity: "warning"
+      cooldown: "24h"
+      message: "SSL certificate expiring in {{ $value }} days"
+      description: "SSL certificate will expire soon"
+      
+    backup_failed:
+      condition: "increase(backup_failures_total[24h]) > 0"
+      severity: "critical"
+      cooldown: "1h"
+      message: "Backup failed"
+      description: "Automated backup has failed"
+      
+  # Log-based alerts
+  logs:
+    high_error_rate:
+      condition: "rate(log_entries_total{level='ERROR'}[5m]) > 0.1"
+      severity: "warning"
+      cooldown: "15m"
+      message: "High error rate in logs"
+      description: "Error rate in logs is above 0.1 errors/second"
+      
+    application_exception:
+      condition: "increase(log_entries_total{level='FATAL'}[10m]) > 0"
+      severity: "critical"
+      cooldown: "5m"
+      message: "Application fatal error"
+      description: "Fatal error logged by application"
+      
+    disk_full_warning:
+      condition: "increase(log_entries_total{message=~'.*disk.*full.*'}[30m]) > 0"
+      severity: "critical"
+      cooldown: "10m"
+      message: "Disk full error in logs"
+      description: "Disk full error detected in system logs"
+      
+  # External dependency alerts
+  external:
+    snowflake_connection_failed:
+      condition: "snowflake_connection_status == 0"
+      severity: "critical"
+      cooldown: "5m"
+      message: "Snowflake connection failed"
+      description: "Cannot connect to Snowflake data warehouse"
+      
+    external_api_slow:
+      condition: "avg_over_time(external_api_duration_seconds[10m]) > 30"
+      severity: "warning"
+      cooldown: "20m"
+      message: "External API slow: {{ $value }}s"
+      description: "External API calls are taking longer than 30 seconds"
+      
+    external_api_failed:
+      condition: "rate(external_api_requests_total{status='error'}[10m]) > 0.1"
+      severity: "warning"
+      cooldown: "15m"
+      message: "External API failures: {{ $value }}"
+      description: "External API failure rate is above 10%"

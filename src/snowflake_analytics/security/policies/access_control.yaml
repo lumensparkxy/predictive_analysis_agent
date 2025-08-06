@@ -1,0 +1,364 @@
+# Access Control Policy Configuration
+# Role-based access control rules and permissions
+
+access_control:
+  version: "1.0"
+  effective_date: "2024-01-01"
+  
+  # Role definitions
+  roles:
+    super_admin:
+      description: "Full system administration access"
+      permissions: "*"
+      restrictions: []
+      requires_approval: true
+      max_users: 2
+      
+    admin:
+      description: "System administrator with most privileges"
+      permissions:
+        - "read_data"
+        - "write_data"
+        - "delete_data"
+        - "view_analytics"
+        - "create_analytics"
+        - "modify_analytics"
+        - "user_management"
+        - "system_config"
+        - "view_metrics"
+        - "view_logs"
+        - "view_health"
+        - "api_access"
+        - "api_write"
+        - "api_admin"
+      restrictions:
+        - "cannot_delete_audit_logs"
+        - "cannot_disable_security_features"
+      requires_mfa: true
+      
+    analyst:
+      description: "Data analyst with analytics creation privileges"
+      permissions:
+        - "read_data"
+        - "write_data"
+        - "view_analytics"
+        - "create_analytics"
+        - "modify_analytics"
+        - "view_metrics"
+        - "view_logs"
+        - "view_health"
+        - "api_access"
+      restrictions:
+        - "no_user_management"
+        - "no_system_config"
+        - "no_data_deletion"
+        - "no_sensitive_data_export"
+      data_access_scope:
+        - "analytics_results"
+        - "aggregated_metrics"
+        - "non_pii_data"
+        
+    viewer:
+      description: "Read-only access to dashboards and reports"
+      permissions:
+        - "read_data"
+        - "view_analytics"
+        - "view_metrics"
+        - "view_health"
+        - "api_access"
+      restrictions:
+        - "no_data_modification"
+        - "no_raw_data_access"
+        - "no_system_information"
+        - "no_user_information"
+      data_access_scope:
+        - "dashboards"
+        - "reports"
+        - "public_metrics"
+        
+    api_user:
+      description: "Programmatic API access for external systems"
+      permissions:
+        - "read_data"
+        - "view_analytics"
+        - "api_access"
+      restrictions:
+        - "no_interactive_access"
+        - "rate_limited"
+        - "ip_restricted"
+      requires_api_key: true
+      api_rate_limit: "1000/hour"
+      
+    service:
+      description: "Internal service account for automated processes"
+      permissions:
+        - "read_data"
+        - "write_data"
+        - "view_analytics"
+        - "create_analytics"
+        - "api_access"
+        - "api_write"
+      restrictions:
+        - "no_user_interface_access"
+        - "source_ip_restricted"
+      requires_certificate_auth: true
+      
+  # Permission definitions
+  permissions:
+    read_data:
+      description: "Read access to application data"
+      resources:
+        - "databases"
+        - "data_files"
+        - "cache"
+      conditions:
+        - "authenticated"
+        - "not_suspended"
+        
+    write_data:
+      description: "Write access to application data"
+      resources:
+        - "databases"
+        - "data_files"
+      conditions:
+        - "authenticated"
+        - "not_suspended"
+        - "has_write_role"
+      audit_required: true
+      
+    delete_data:
+      description: "Delete access to application data"
+      resources:
+        - "databases"
+        - "data_files"
+      conditions:
+        - "authenticated"
+        - "admin_role"
+        - "approval_required"
+      audit_required: true
+      high_risk: true
+      
+    user_management:
+      description: "Create, modify, and delete user accounts"
+      resources:
+        - "user_accounts"
+        - "role_assignments"
+      conditions:
+        - "admin_role"
+        - "mfa_verified"
+      audit_required: true
+      
+    system_config:
+      description: "Modify system configuration"
+      resources:
+        - "configuration_files"
+        - "system_settings"
+        - "security_settings"
+      conditions:
+        - "admin_role"
+        - "mfa_verified"
+        - "change_window"
+      audit_required: true
+      approval_required: true
+      
+  # Access control rules
+  rules:
+    geographic_restrictions:
+      enabled: false  # Set to true for geo-blocking
+      allowed_countries: []
+      blocked_countries: []
+      
+    time_based_access:
+      enabled: false  # Set to true for time restrictions
+      business_hours_only: false
+      timezone: "UTC"
+      allowed_hours:
+        start: "08:00"
+        end: "18:00"
+      allowed_days: [1, 2, 3, 4, 5]  # Monday-Friday
+      
+    ip_restrictions:
+      enabled: true
+      allowed_networks:
+        - "10.0.0.0/8"      # Private network
+        - "172.16.0.0/12"   # Private network  
+        - "192.168.0.0/16"  # Private network
+      blocked_networks:
+        - "0.0.0.0/0"       # Block all by default, then allow specific
+      whitelist_mode: true
+      
+    device_restrictions:
+      enabled: false
+      require_managed_devices: false
+      allow_mobile: true
+      allow_unregistered: false
+      
+    concurrent_sessions:
+      max_per_user: 5
+      max_per_role:
+        admin: 2
+        analyst: 3
+        viewer: 10
+        api_user: 1
+        service: 1
+      terminate_oldest: true
+      
+  # Data access controls
+  data_access_controls:
+    classification_based:
+      enabled: true
+      rules:
+        pii:
+          allowed_roles: ["admin", "analyst"]
+          requires_justification: true
+          audit_all_access: true
+          
+        phi:
+          allowed_roles: ["admin"]
+          requires_approval: true
+          audit_all_access: true
+          additional_logging: true
+          
+        confidential:
+          allowed_roles: ["admin", "analyst"]
+          need_to_know: true
+          audit_all_access: true
+          
+        restricted:
+          allowed_roles: ["admin"]
+          requires_approval: true
+          dual_authorization: true
+          
+    field_level_security:
+      enabled: true
+      sensitive_fields:
+        - "user_email"
+        - "user_phone" 
+        - "credit_card_number"
+        - "ssn"
+        - "password_hash"
+      masking_rules:
+        email: "partial"  # show only domain
+        phone: "mask"     # show only country code
+        credit_card: "last_four"
+        ssn: "none"       # completely hidden
+        password: "none"  # completely hidden
+        
+    row_level_security:
+      enabled: true
+      rules:
+        user_data: "user_id = current_user_id"
+        tenant_data: "tenant_id IN (user_allowed_tenants)"
+        
+  # Authentication requirements
+  authentication:
+    methods:
+      password:
+        enabled: true
+        complexity_required: true
+        
+      mfa:
+        enabled: true
+        required_for_roles: ["admin", "super_admin"]
+        methods: ["totp", "backup_codes"]
+        
+      api_key:
+        enabled: true
+        required_for_roles: ["api_user"]
+        expiration_days: 90
+        
+      certificate:
+        enabled: true
+        required_for_roles: ["service"]
+        ca_verification: true
+        
+    session_management:
+      timeout_minutes: 60
+      absolute_timeout_hours: 8
+      remember_me_days: 30
+      secure_cookies: true
+      
+  # Authorization policies
+  authorization:
+    policy_evaluation: "deny_by_default"
+    policy_combination: "most_restrictive"
+    
+    context_attributes:
+      - "user.id"
+      - "user.roles"
+      - "user.department"
+      - "user.location"
+      - "session.ip_address"
+      - "session.user_agent"
+      - "request.resource"
+      - "request.action"
+      - "request.time"
+      - "data.classification"
+      
+    dynamic_policies:
+      enabled: true
+      risk_based: true
+      adaptive: true
+      
+  # Monitoring and compliance
+  monitoring:
+    access_logging: true
+    failed_attempts_threshold: 5
+    privilege_escalation_detection: true
+    anomaly_detection: true
+    
+    alerts:
+      multiple_failed_logins: true
+      privilege_escalation: true
+      after_hours_access: true
+      geographic_anomaly: true
+      data_access_volume: true
+      
+  compliance:
+    segregation_of_duties: true
+    approval_workflows: true
+    access_reviews:
+      frequency: "quarterly"
+      automated_discovery: true
+      manager_approval: true
+      
+    access_certification:
+      frequency: "annually"
+      role_owners: true
+      attestation_required: true
+      
+  # Emergency access
+  emergency_access:
+    enabled: true
+    break_glass_accounts: 2
+    approval_required: true
+    time_limited: true
+    full_audit: true
+    automatic_revocation: true
+    
+  # API access controls  
+  api_access:
+    rate_limiting:
+      enabled: true
+      default_limit: "1000/hour"
+      role_limits:
+        viewer: "100/hour"
+        analyst: "500/hour" 
+        admin: "2000/hour"
+        api_user: "1000/hour"
+        service: "10000/hour"
+        
+    request_filtering:
+      enabled: true
+      max_request_size: "10MB"
+      allowed_content_types:
+        - "application/json"
+        - "application/x-www-form-urlencoded"
+        - "multipart/form-data"
+      blocked_user_agents: []
+      
+    cors_policy:
+      enabled: false  # Disabled for security
+      allowed_origins: []
+      allowed_methods: ["GET", "POST"]
+      allowed_headers: ["Authorization", "Content-Type"]
