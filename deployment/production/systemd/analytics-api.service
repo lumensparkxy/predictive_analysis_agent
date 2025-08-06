@@ -1,0 +1,59 @@
+# Snowflake Analytics API Service
+# SystemD service configuration for the main API service
+
+[Unit]
+Description=Snowflake Analytics API Service
+Documentation=https://github.com/lumensparkxy/predictive_analysis_agent
+After=network.target postgresql.service redis.service
+Wants=network.target
+Requires=postgresql.service
+
+[Service]
+Type=exec
+User=analytics
+Group=analytics
+WorkingDirectory=/opt/analytics
+Environment=PATH=/opt/analytics/venv/bin
+Environment=PYTHONPATH=/opt/analytics/src
+EnvironmentFile=/opt/analytics/config/production.env
+
+# Main command
+ExecStart=/opt/analytics/venv/bin/uvicorn src.snowflake_analytics.api.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --access-log \
+    --log-level info \
+    --log-config /opt/analytics/config/logging.yaml
+
+ExecReload=/bin/kill -s HUP $MAINPID
+
+# Process management
+KillMode=process
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/analytics/logs /opt/analytics/data /tmp
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
+LockPersonality=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=analytics-api
+
+[Install]
+WantedBy=multi-user.target
